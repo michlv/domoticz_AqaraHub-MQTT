@@ -27,6 +27,7 @@
 """
 import Domoticz
 import random
+import Proxy
 
 class BasePlugin:
     enabled = False
@@ -57,7 +58,13 @@ class BasePlugin:
         DumpDictionaryToLog(Data)
         if (verb == "CONNACK" and Data['Status'] == 0):
             self.doSubscribe(Connection)
-
+        elif (verb == 'PUBLISH'):
+            t = Proxy.Topic(Parameters["Mode1"], Data['Topic'])
+            if t.checkRootTopic() == False:
+                Domoticz.Error("Unexpected root topic element {1} ({0})".format(t.getExpectedRootTopic(), t.getRootTopic()))
+            else:
+                self.processData(t.getDeviceID(), t, Data['Payload'])
+            
     def onDisconnect(self, Connection):
         Domoticz.Log("onDisconnect called")
 
@@ -70,7 +77,7 @@ class BasePlugin:
             #    self.mqttConn.Send({'Verb' : 'UNSUBSCRIBE', 'Topics': [Parameters["Mode1"]]})
             #elif (self.counter % 50 == 0):
             #    self.mqttConn.Send({ 'Verb' : 'DISCONNECT' })
-            #self.counter = self.counter + 1
+            self.counter = self.counter + 1
         else:
             self.doConnect()
 
@@ -84,7 +91,27 @@ class BasePlugin:
         self.mqttConn = Domoticz.Connection(Name="MQTT Test", Transport="TCP/IP", Protocol=Protocol, Address=Parameters["Address"], Port=Parameters["Port"])
         self.mqttConn.Connect()
 
-            
+    def processData(self, deviceID, topic, data):
+        devProxy = self.getDeviceProxy(deviceID)
+        if devProxy:
+            devProxy.processData(topic, data)
+        else:
+            self.registerDevice(deviceID, topic, data)
+
+    def getDeviceProxy(self, deviceID):
+        for Unit in Devices:
+            if Devices[Unit].DeviceID == deviceID:
+                dev = Devices[Unit]
+                Domoticz.Log("Found device unit: {0}".format(dev.Unit))
+                return Proxy.get(dev)
+        return None
+    
+    def registerDevice(self, deviceID, topic, data):
+        u = len(Devices)
+        Domoticz.Log("Registering new device {0}".format(deviceID))
+        Domoticz.Device(Name=deviceID, Unit=u+1, TypeName='Temp+Hum+Baro', DeviceID=deviceID).Create()
+
+    
 global _plugin
 _plugin = BasePlugin()
 
