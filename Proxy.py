@@ -68,13 +68,13 @@ class TempHumBaro:
         if topic.getTopic() == 'linkquality':
             self.deviceObj.Update(self.deviceObj.nValue, self.deviceObj.sValue, SignalLevel=int(data))
         elif inTopic in self.DataTopic:
-            jdata = json.loads(data.decode())
+            jdata = json.loads(data)
             c = self.DataTopic[inTopic]
             v = float(jdata['value']) * c[0]
             c[1](self, v)
             self.update()
         elif inTopic == 'Basic/Report Attributes/0xFF01':
-            jdata = json.loads(data.decode())
+            jdata = json.loads(data)
             for i in jdata['value']:
                 u = False
                 if i in self.XiaomiFields:

@@ -96,7 +96,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         dev = DeviceIDMock();
         proxy = Proxy.get(dev)
         topic = 'AqaraHub/00158D000272C69E/linkquality'
-        data = b'18'
+        data = '18'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.SignalLevel, 18)
@@ -106,7 +106,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         dev = DeviceIDMock();
         proxy = Proxy.get(dev)
         topic = 'AqaraHub/00158D000272C69E/1/in/Temperature Measurement/Report Attributes/MeasuredValue'
-        data = b'{"type":"int16","value":2128}'
+        data = '{"type":"int16","value":2128}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "21.28;59.33;0;1024.01;0")
@@ -116,7 +116,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         dev = DeviceIDMock();
         proxy = Proxy.get(dev)
         topic = 'AqaraHub/00158D000272C69E/1/in/Relative Humidity Measurement/Report Attributes/MeasuredValue'
-        data = b'{"type":"uint16","value":3947}'
+        data = '{"type":"uint16","value":3947}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "11.22;39.47;0;1024.01;0")
@@ -126,7 +126,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         dev = DeviceIDMock();
         proxy = Proxy.get(dev)
         topic = 'AqaraHub/00158D000272C69E/1/in/Pressure Measurement/Report Attributes/ScaledValue'
-        data = b'{"type":"int16","value":9973}'
+        data = '{"type":"int16","value":9973}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "11.22;59.33;0;997.30;0")
@@ -136,7 +136,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         dev = DeviceIDMock();
         proxy = Proxy.get(dev)
         topic = 'AqaraHub/00158D000272C69E/1/in/Basic/Report Attributes/0xFF01'
-        data = b'{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3005},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
+        data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3005},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")

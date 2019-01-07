@@ -63,7 +63,7 @@ class BasePlugin:
             if t.checkRootTopic() == False:
                 Domoticz.Error("Unexpected root topic element {1} ({0})".format(t.getExpectedRootTopic(), t.getRootTopic()))
             else:
-                self.processData(t.getDeviceID(), t, Data['Payload'])
+                self.processData(t.getDeviceID(), t, Data['Payload'].decode())
             
     def onDisconnect(self, Connection):
         Domoticz.Log("onDisconnect called")
