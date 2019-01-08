@@ -99,7 +99,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         data = '18'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
-        self.assertEqual(dev.SignalLevel, 18)
+        self.assertEqual(dev.SignalLevel, 1)
         self.assertEqual(proxy.batt, 255)
 
     def testTemperature(self):

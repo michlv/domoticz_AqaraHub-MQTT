@@ -83,7 +83,7 @@ class TempHumBaro:
     def processData(self, topic, data):
         inTopic = topic.getInTopic()
         if topic.getTopic() == 'linkquality':
-            self.signal = int(data)
+            self.signal = int(int(data)/10)
             self.update()
         elif inTopic in self.DataTopic:
             jdata = json.loads(data)
