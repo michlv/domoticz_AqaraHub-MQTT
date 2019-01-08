@@ -62,11 +62,13 @@ class TempHumBaro:
         self.baro = float(self.baro)
         self.forecast = 0
         self.batt = self.deviceObj.BatteryLevel
+        self.signal = self.deviceObj.SignalLevel
             
     def processData(self, topic, data):
         inTopic = topic.getInTopic()
         if topic.getTopic() == 'linkquality':
-            self.deviceObj.Update(self.deviceObj.nValue, self.deviceObj.sValue, SignalLevel=int(data))
+            self.signal = int(data)
+            self.update()
         elif inTopic in self.DataTopic:
             jdata = json.loads(data)
             c = self.DataTopic[inTopic]
@@ -99,7 +101,7 @@ class TempHumBaro:
     
     def update(self):
         sValue = ';'.join((format(self.temp, '.2f'), format(self.hum, '.2f'), str(self.hum_stat), format(self.baro, '.2f'), str(self.forecast)))
-        self.deviceObj.Update(0, sValue, BatteryLevel = self.batt)
+        self.deviceObj.Update(0, sValue, BatteryLevel=self.batt, SignalLevel=self.signal)
     
     DataTopic = {
         "Temperature Measurement/Report Attributes/MeasuredValue": [0.01, setTemperature],
