@@ -141,6 +141,27 @@ class TestTempHumBaroProxy(unittest.TestCase):
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
         self.assertEqual(dev.BatteryLevel, 80)
+
+    def testTypeNameMatch(self):
+        topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/ModelIdentifier'
+        data = '{"type":"string","value":"lumi.weather"}'
+        t = Proxy.Topic('AqaraHub', topic)
+        tn = Proxy.getTypeName(t, data)
+        self.assertEqual(tn, "Temp+Hum+Baro")
+
+    def testTypeNameNoMatch1(self):
+        topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/ModelIdentifier'
+        data = '{"type":"string","value":"lumi.XXXXX"}'
+        t = Proxy.Topic('AqaraHub', topic)
+        tn = Proxy.getTypeName(t, data)
+        self.assertEqual(tn, None)
+
+    def testTypeNameNoMatch2(self):
+        topic = 'AqaraHub/00158D0002786756/1/in/XX/YY'
+        data = '10'
+        t = Proxy.Topic('AqaraHub', topic)
+        tn = Proxy.getTypeName(t, data)
+        self.assertEqual(tn, None)
         
 
 if __name__ == '__main__':

@@ -107,9 +107,15 @@ class BasePlugin:
         return None
     
     def registerDevice(self, deviceID, topic, data):
-        u = len(Devices)
-        Domoticz.Log("Registering new device {0}".format(deviceID))
-        Domoticz.Device(Name=deviceID, Unit=u+1, TypeName='Temp+Hum+Baro', DeviceID=deviceID).Create()
+        umax = 0
+        for i in Devices:
+            umax = max(umax, Devices[i].Unit)
+        type = Proxy.getTypeName(topic, data)
+        if type:
+            Domoticz.Log("Found proxy of type {0}, registering new device {1}.".format(type, deviceID))
+            Domoticz.Device(Name=deviceID, Unit=umax+1, TypeName=type, DeviceID=deviceID, Used=1).Create()
+        else:
+            Domoticz.Debug("Unknown device device {0}".format(deviceID))
 
     
 global _plugin

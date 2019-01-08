@@ -10,6 +10,13 @@ import json
 def get(deviceObj):
     return TempHumBaro(deviceObj)
 
+def getTypeName(topic, data):
+    for i in ProxyObjects:
+        typeName = i.getTypeName(topic, data)
+        if typeName:
+            return typeName
+    return None
+
 
 class Topic:
     def __init__(self, rootTopic, topic):
@@ -64,6 +71,15 @@ class TempHumBaro:
         self.batt = self.deviceObj.BatteryLevel
         self.signal = self.deviceObj.SignalLevel
             
+    @staticmethod
+    def getTypeName(topic, data):
+        t = topic.getInTopic()
+        if t == 'Basic/Report Attributes/ModelIdentifier':
+            jdata = json.loads(data)
+            if jdata['value'] == "lumi.weather":
+                return "Temp+Hum+Baro"
+        return None
+        
     def processData(self, topic, data):
         inTopic = topic.getInTopic()
         if topic.getTopic() == 'linkquality':
@@ -116,3 +132,5 @@ class TempHumBaro:
         "102": [0.01, setPressure]
     }
                 
+
+ProxyObjects = [TempHumBaro]
