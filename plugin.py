@@ -47,7 +47,7 @@ class BasePlugin:
         if (Status == 0):
             Domoticz.Debug("MQTT connected successfully.")
             sendData = { 'Verb' : 'CONNECT',
-                         'ID' : "645364363" }
+                         'ID' : "645364364" }
             Connection.Send(sendData)
         else:
             Domoticz.Log("Failed to connect ("+str(Status)+") to: "+Parameters["Address"]+":"+Parameters["Port"]+" with error: "+Description)
@@ -88,7 +88,7 @@ class BasePlugin:
         Protocol = "MQTT"
         if (Parameters["Port"] == "8883"):
             Protocol = "MQTTS"
-        self.mqttConn = Domoticz.Connection(Name="MQTT Test", Transport="TCP/IP", Protocol=Protocol, Address=Parameters["Address"], Port=Parameters["Port"])
+        self.mqttConn = Domoticz.Connection(Name="AqaraHub-MQTT", Transport="TCP/IP", Protocol=Protocol, Address=Parameters["Address"], Port=Parameters["Port"])
         self.mqttConn.Connect()
 
     def processData(self, deviceID, topic, data):
