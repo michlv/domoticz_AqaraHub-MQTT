@@ -34,13 +34,6 @@ def _registerDevice(devices, createDevice, deviceID, topic, data):
         i.registerDevice(devices, createDevice, deviceID, topic, data)
 
 
-def _createDevice(devices, createDevice, deviceID, typeName):
-    umax = 0
-    for i in devices:
-        umax = max(umax, devices[i].Unit)
-    createDevice(Name=deviceID, Unit=umax+1, TypeName=typeName, DeviceID=deviceID, Used=1).Create()
-
-
 class Topic:
     def __init__(self, rootTopic, topic):
         self.rootTopic = rootTopic
@@ -78,6 +71,28 @@ class Topic:
         return '/'.join(topic)
 
 
+def _getNextUnitId(devices):
+    umax = 0
+    for i in devices:
+        umax = max(umax, devices[i].Unit)
+    return umax+1
+    
+def _createDeviceByName(devices, createDevice, deviceID, typeName):
+    umax = _getNextUnitId(devices)
+    createDevice(Name=deviceID, Unit=umax, TypeName=typeName, DeviceID=deviceID, Used=1).Create()
+
+def _createDeviceByType(devices, createDevice, deviceID, type, subtype, switchtype):
+    umax = _getNextUnitId(devices)
+    createDevice(Name=deviceID, Unit=umax, Type=type, Subtype=subtype, Switchtype=switchtype, DeviceID=deviceID, Used=1).Create()
+
+def _getSensorModel(topic, data):
+    t = topic.getInTopic()
+    if t == 'Basic/Report Attributes/ModelIdentifier':
+        jdata = json.loads(data)
+        return jdata['value']
+    return None
+
+
 class TempHumBaro:
     def __init__(self, devices, deviceObj):
         self.devices = devices
@@ -95,28 +110,20 @@ class TempHumBaro:
         self.batt = self.deviceObj.BatteryLevel
         self.signal = self.deviceObj.SignalLevel
 
-    typeName = "Temp+Hum+Baro"
-    typeNameId = 84
+    TypeName = "Temp+Hum+Baro"
+    Type = 84
     
     @staticmethod
     def registerDevice(devices, createDevice, deviceID, topic, data):
-        t = TempHumBaro.getTypeName(topic, data)
-        if t:
-            _createDevice(devices, createDevice, deviceID, t)
+        m = _getSensorModel(topic, data)
+        if m == "lumi.weather":
+            _createDeviceByName(devices, createDevice, deviceID, TempHumBaro.TypeName)
 
     @staticmethod
     def getAdapter(devices, deviceObj):
-        return TempHumBaro(devices, deviceObj)
+        if deviceObj.Type == TempHumBaro.Type:
+            return TempHumBaro(devices, deviceObj)
 
-    @staticmethod
-    def getTypeName(topic, data):
-        t = topic.getInTopic()
-        if t == 'Basic/Report Attributes/ModelIdentifier':
-            jdata = json.loads(data)
-            if jdata['value'] == "lumi.weather":
-                return TempHumBaro.typeName
-        return None
-        
     def processData(self, topic, data):
         inTopic = topic.getInTopic()
         if topic.getTopic() == 'linkquality':
@@ -168,6 +175,88 @@ class TempHumBaro:
         "101": [0.01, setHumidity],
         "102": [0.01, setPressure]
     }
-                
 
-ProxyObjects = [TempHumBaro]
+
+class MotionSensor:
+    def __init__(self, devices, deviceObj):
+        self.devices = devices
+        self.deviceObj = deviceObj
+        #SignalLevel 0-100
+        #BatteryLevel 0-255
+        #nValue
+        self.value = self.deviceObj.nValue
+        self.batt = self.deviceObj.BatteryLevel
+        self.signal = self.deviceObj.SignalLevel
+
+    Type = 244
+    SubType = 73
+    SwitchType = 8
+    
+    @staticmethod
+    def registerDevice(devices, createDevice, deviceID, topic, data):
+        m = _getSensorModel(topic, data)
+        if m == "lumi.sensor_motion.aq2":
+            _createDeviceByType(devices, createDevice, deviceID, MotionSensor.Type, MotionSensor.SubType, MotionSensor.SwitchType)
+
+    @staticmethod
+    def getAdapter(devices, deviceObj):
+        if deviceObj.Type == MotionSensor.Type and deviceObj.SubType == MotionSensor.SubType and deviceObj.SwitchType == MotionSensor.SwitchType:
+            return MotionSensor(devices, deviceObj)
+
+    def processData(self, topic, data):
+        inTopic = topic.getInTopic()
+        if topic.getTopic() == 'linkquality':
+            self.signal = int(int(data)/10)
+            self.update()
+        elif inTopic in self.DataTopic:
+            jdata = json.loads(data)
+            c = self.DataTopic[inTopic]
+            self.processValue(c, jdata['value'])
+            self.update()
+        elif inTopic == 'Basic/Report Attributes/0xFF01':
+            jdata = json.loads(data)
+            for i in jdata['value']:
+                u = False
+                if i in self.XiaomiFields:
+                    c = self.XiaomiFields[i]
+                    vraw = jdata['value'][i]['value']
+                    self.processValue(c, vraw)
+                    u = True
+                if u:
+                    self.update()
+                
+    def processValue(self, c, vraw):
+        vtype = c[0]
+        if vtype == "bool":
+            v = vraw
+        elif vtype == "map8":
+            v = vraw[0]
+        else:
+            v = float(vraw) * vtype
+        c[1](self, v)
+        
+    def update(self):
+        self.deviceObj.Update(self.value, "", BatteryLevel=self.batt, SignalLevel=self.signal)
+
+    def setXiaomiBattery(self, value):
+        self.batt = int((value - 2.2)*100)        
+
+    def setIlluminance(self, value):
+        self.illuminance = value
+
+    def setOccupancy(self, value):
+        self.value = int(bool(value))
+        
+    DataTopic = {
+        "Illuminance Measurement/Report Attributes/0x0000": [1, setIlluminance],
+        "Occupancy Sensing/Report Attributes/Occupancy": ["map8", setOccupancy]
+    }
+
+
+    XiaomiFields = {
+        "1": [0.001, setXiaomiBattery],
+        "100": ["bool", setOccupancy]
+    }
+        
+
+ProxyObjects = [TempHumBaro, MotionSensor]
