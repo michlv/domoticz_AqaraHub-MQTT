@@ -28,7 +28,7 @@
 import Domoticz
 import random
 import time
-import Proxy
+import adapter
 
 PluginName = "AqaraHub-MQTT"
 
@@ -63,7 +63,7 @@ class BasePlugin:
         if (verb == "CONNACK" and Data['Status'] == 0):
             self.doSubscribe(Connection)
         elif (verb == 'PUBLISH'):
-            Proxy.onData(Devices, Domoticz.Device, Parameters["Mode1"], Data['Topic'], Data['Payload'].decode())
+            adapter.onData(Devices, Domoticz.Device, Parameters["Mode1"], Data['Topic'], Data['Payload'].decode())
 
     def onDisconnect(self, Connection):
         Domoticz.Log("onDisconnect called")

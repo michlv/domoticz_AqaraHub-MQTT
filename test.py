@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
 import unittest
-import Proxy
+import adapter
 
 class TestTopic(unittest.TestCase):
 
     def testRoot(self):
-        t = Proxy.Topic("AqaraHub1", "AqaraHub2/XXYYCC/linkquality")
+        t = adapter.Topic("AqaraHub1", "AqaraHub2/XXYYCC/linkquality")
         self.assertEqual(t.getExpectedRootTopic(), "AqaraHub1")
         self.assertEqual(t.getRootTopic(), "AqaraHub2")
         self.assertFalse(t.checkRootTopic())
 
     def testTopic(self):
-        t = Proxy.Topic("AqaraHub", "AqaraHub/XXYYCC/linkquality")
+        t = adapter.Topic("AqaraHub", "AqaraHub/XXYYCC/linkquality")
         self.assertEqual(t.getExpectedRootTopic(), "AqaraHub")
         self.assertEqual(t.getRootTopic(), "AqaraHub")
         self.assertTrue(t.checkRootTopic())
@@ -21,7 +21,7 @@ class TestTopic(unittest.TestCase):
         self.assertEqual(t.getInTopic(), None)
 
     def testIn(self):
-        t = Proxy.Topic("AqaraHub", "AqaraHub/XXYYCC/1/in/Temperature")
+        t = adapter.Topic("AqaraHub", "AqaraHub/XXYYCC/1/in/Temperature")
         self.assertEqual(t.getExpectedRootTopic(), "AqaraHub")
         self.assertEqual(t.getRootTopic(), "AqaraHub")
         self.assertTrue(t.checkRootTopic())
@@ -59,18 +59,18 @@ class DeviceIDMock:
             self.SignalLevel = SignalLevel
 
 
-class TestTempHumBaroProxy(unittest.TestCase):
+class TestTempHumBaroadapter(unittest.TestCase):
     def getMock(self):
         global _devices
 
         _devices = {}
         device = DeviceIDMock()
-        adapter = Proxy.TempHumBaro(_devices, device)
-        return (_devices, device, adapter)
+        a = adapter.TempHumBaro(_devices, device)
+        return (_devices, device, a)
     
     def testCreation(self):
         (devices, dev, proxy) = self.getMock()
-        self.assertTrue(isinstance(proxy, Proxy.TempHumBaro))
+        self.assertTrue(isinstance(proxy, adapter.TempHumBaro))
         self.assertEqual(dev.sValue, "11.22;59.33;0;1024.01;0")
         self.assertEqual(proxy.temp, 11.22)
         self.assertEqual(proxy.hum, 59.33)
@@ -109,7 +109,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/linkquality'
         data = '18'
-        t = Proxy.Topic('AqaraHub', topic)
+        t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.SignalLevel, 1)
         self.assertEqual(dev.BatteryLevel, 255)
@@ -118,7 +118,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Temperature Measurement/Report Attributes/MeasuredValue'
         data = '{"type":"int16","value":2128}'
-        t = Proxy.Topic('AqaraHub', topic)
+        t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "21.28;59.33;0;1024.01;0")
         self.assertEqual(dev.SignalLevel, 100)
@@ -128,7 +128,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Relative Humidity Measurement/Report Attributes/MeasuredValue'
         data = '{"type":"uint16","value":3947}'
-        t = Proxy.Topic('AqaraHub', topic)
+        t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "11.22;39.47;0;1024.01;0")
         self.assertEqual(dev.SignalLevel, 100)
@@ -138,7 +138,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Pressure Measurement/Report Attributes/ScaledValue'
         data = '{"type":"int16","value":9973}'
-        t = Proxy.Topic('AqaraHub', topic)
+        t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "11.22;59.33;0;997.30;0")
         self.assertEqual(dev.SignalLevel, 100)
@@ -148,7 +148,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Basic/Report Attributes/0xFF01'
         data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3005},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
-        t = Proxy.Topic('AqaraHub', topic)
+        t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
         self.assertEqual(dev.BatteryLevel, 80)
@@ -158,7 +158,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/ModelIdentifier'
         data = '{"type":"string","value":"lumi.weather"}'
-        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        adapter.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
         self.assertEqual(len(devices), 1)
         self.assertTrue(1 in devices)
         self.assertTrue(devices[1].Name, "00158D0002786756")
@@ -170,7 +170,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
         # No Update, different ID
         topic = 'AqaraHub/00158D0002786756XX/1/in/Basic/Report Attributes/0xFF01'
         data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3005},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
-        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        adapter.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
         dev = devices[1]
         self.assertEqual(dev.sValue, "11.22;59.33;0;1024.01;0")
         self.assertEqual(dev.BatteryLevel, 255)
@@ -178,7 +178,7 @@ class TestTempHumBaroProxy(unittest.TestCase):
 
         # Update
         topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/0xFF01'
-        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        adapter.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
         dev = devices[1]
         self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
         self.assertEqual(dev.BatteryLevel, 80)
@@ -188,14 +188,14 @@ class TestTempHumBaroProxy(unittest.TestCase):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/ModelIdentifier'
         data = '{"type":"string","value":"lumi.XXXXX"}'
-        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        adapter.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
         self.assertEqual(len(devices), 0)
 
     def testTypeNameNoMatch2(self):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D0002786756/1/in/XX/YY'
         data = '10'
-        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        adapter.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
         self.assertEqual(len(devices), 0)
         
 
