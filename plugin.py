@@ -63,12 +63,8 @@ class BasePlugin:
         if (verb == "CONNACK" and Data['Status'] == 0):
             self.doSubscribe(Connection)
         elif (verb == 'PUBLISH'):
-            t = Proxy.Topic(Parameters["Mode1"], Data['Topic'])
-            if t.checkRootTopic() == False:
-                Domoticz.Error("Unexpected root topic element {1} ({0})".format(t.getExpectedRootTopic(), t.getRootTopic()))
-            else:
-                self.processData(t.getDeviceID(), t, Data['Payload'].decode())
-            
+            Proxy.onData(Devices, Domoticz.Device, Parameters["Mode1"], Data['Topic'], Data['Payload'].decode())
+
     def onDisconnect(self, Connection):
         Domoticz.Log("onDisconnect called")
 
@@ -94,32 +90,6 @@ class BasePlugin:
             Protocol = "MQTTS"
         self.mqttConn = Domoticz.Connection(Name=PluginName, Transport="TCP/IP", Protocol=Protocol, Address=Parameters["Address"], Port=Parameters["Port"])
         self.mqttConn.Connect()
-
-    def processData(self, deviceID, topic, data):
-        devProxy = self.getDeviceProxy(deviceID)
-        if devProxy:
-            devProxy.processData(topic, data)
-        else:
-            self.registerDevice(deviceID, topic, data)
-
-    def getDeviceProxy(self, deviceID):
-        for Unit in Devices:
-            if Devices[Unit].DeviceID == deviceID:
-                dev = Devices[Unit]
-                Domoticz.Log("Found device unit: {0}".format(dev.Unit))
-                return Proxy.get(dev)
-        return None
-    
-    def registerDevice(self, deviceID, topic, data):
-        umax = 0
-        for i in Devices:
-            umax = max(umax, Devices[i].Unit)
-        type = Proxy.getTypeName(topic, data)
-        if type:
-            Domoticz.Log("Found proxy of type {0}, registering new device {1}.".format(type, deviceID))
-            Domoticz.Device(Name=deviceID, Unit=umax+1, TypeName=type, DeviceID=deviceID, Used=1).Create()
-        else:
-            Domoticz.Debug("Unknown device device {0}".format(deviceID))
 
     
 global _plugin

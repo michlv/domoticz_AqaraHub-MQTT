@@ -30,9 +30,15 @@ class TestTopic(unittest.TestCase):
         self.assertEqual(t.getInTopic(), "Temperature")
         
 
+_devices = {}
+
 class DeviceIDMock:
-    def __init__(self):
-        self.DeviceID = ""
+    def __init__(self, Name=None, Unit=None, TypeName=None, DeviceID=None, Used=None):
+        self.Name = Name
+        self.Unit = Unit
+        self.TypeName = TypeName
+        self.DeviceID = DeviceID
+        self.Used = Used
         # Temperature;Humidity;Humidity Status;Barometer;Forecast
         self.nValue = 0
         self.sValue = "11.22;59.33;0;1024.01;0"
@@ -40,7 +46,9 @@ class DeviceIDMock:
         self.BatteryLevel = 255
 
     def Create(self):
-        pass
+        global _devices
+    
+        _devices[self.Unit] = self
 
     def Update(self, nValue, sValue, BatteryLevel=None, SignalLevel=None):
         self.nValue = nValue
@@ -52,9 +60,16 @@ class DeviceIDMock:
 
 
 class TestTempHumBaroProxy(unittest.TestCase):
+    def getMock(self):
+        global _devices
+
+        _devices = {}
+        device = DeviceIDMock()
+        adapter = Proxy.TempHumBaro(_devices, device)
+        return (_devices, device, adapter)
+    
     def testCreation(self):
-        dev = DeviceIDMock()
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         self.assertTrue(isinstance(proxy, Proxy.TempHumBaro))
         self.assertEqual(dev.sValue, "11.22;59.33;0;1024.01;0")
         self.assertEqual(proxy.temp, 11.22)
@@ -66,102 +81,122 @@ class TestTempHumBaroProxy(unittest.TestCase):
         proxy.setPressure(995.23)
         proxy.update()
         self.assertEqual(dev.sValue, "22.11;63.21;0;995.23;0")        
-        self.assertEqual(proxy.batt, 255)
+        self.assertEqual(dev.BatteryLevel, 255)
+        self.assertEqual(dev.SignalLevel, 100)
 
     def testSetTemp(self):
-        dev = DeviceIDMock()
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         self.assertEqual(dev.sValue, "11.22;59.33;0;1024.01;0")
         proxy.setTemperature(22.11)
         proxy.update()
         self.assertEqual(dev.sValue, "22.11;59.33;0;1024.01;0")
 
     def testSetHum(self):
-        dev = DeviceIDMock()
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         self.assertEqual(dev.sValue, "11.22;59.33;0;1024.01;0")
         proxy.setHumidity(63.26)
         proxy.update()
         self.assertEqual(dev.sValue, "11.22;63.26;0;1024.01;0")
 
     def testSetBaro(self):
-        dev = DeviceIDMock()
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         self.assertEqual(dev.sValue, "11.22;59.33;0;1024.01;0")
         proxy.setPressure(995.24)
         proxy.update()
         self.assertEqual(dev.sValue, "11.22;59.33;0;995.24;0")
         
     def testLinkQuality(self):
-        dev = DeviceIDMock();
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/linkquality'
         data = '18'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.SignalLevel, 1)
-        self.assertEqual(proxy.batt, 255)
+        self.assertEqual(dev.BatteryLevel, 255)
 
     def testTemperature(self):
-        dev = DeviceIDMock();
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Temperature Measurement/Report Attributes/MeasuredValue'
         data = '{"type":"int16","value":2128}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "21.28;59.33;0;1024.01;0")
-        self.assertEqual(proxy.batt, 255)
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 255)
 
     def testHumidity(self):
-        dev = DeviceIDMock();
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Relative Humidity Measurement/Report Attributes/MeasuredValue'
         data = '{"type":"uint16","value":3947}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "11.22;39.47;0;1024.01;0")
-        self.assertEqual(proxy.batt, 255)
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 255)
 
     def testPressure(self):
-        dev = DeviceIDMock();
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Pressure Measurement/Report Attributes/ScaledValue'
         data = '{"type":"int16","value":9973}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "11.22;59.33;0;997.30;0")
-        self.assertEqual(proxy.batt, 255)
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 255)
         
     def testXiaomiBlock(self):
-        dev = DeviceIDMock();
-        proxy = Proxy.get(dev)
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D000272C69E/1/in/Basic/Report Attributes/0xFF01'
         data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3005},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
         t = Proxy.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
         self.assertEqual(dev.BatteryLevel, 80)
+        self.assertEqual(dev.SignalLevel, 100)
 
-    def testTypeNameMatch(self):
+    def testCreateAndUpdate(self):
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/ModelIdentifier'
         data = '{"type":"string","value":"lumi.weather"}'
-        t = Proxy.Topic('AqaraHub', topic)
-        tn = Proxy.getTypeName(t, data)
-        self.assertEqual(tn, "Temp+Hum+Baro")
+        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        self.assertEqual(len(devices), 1)
+        self.assertTrue(1 in devices)
+        self.assertTrue(devices[1].Name, "00158D0002786756")
+        self.assertTrue(devices[1].Unit, 1)
+        self.assertTrue(devices[1].TypeName, "Temp+Hum+Baro")
+        self.assertTrue(devices[1].DeviceID, "00158D0002786756")
+        self.assertTrue(devices[1].Used, 1)
 
+        # No Update, different ID
+        topic = 'AqaraHub/00158D0002786756XX/1/in/Basic/Report Attributes/0xFF01'
+        data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3005},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
+        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        dev = devices[1]
+        self.assertEqual(dev.sValue, "11.22;59.33;0;1024.01;0")
+        self.assertEqual(dev.BatteryLevel, 255)
+        self.assertEqual(dev.SignalLevel, 100)
+
+        # Update
+        topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/0xFF01'
+        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        dev = devices[1]
+        self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
+        self.assertEqual(dev.BatteryLevel, 80)
+        self.assertEqual(dev.SignalLevel, 100)
+    
     def testTypeNameNoMatch1(self):
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/ModelIdentifier'
         data = '{"type":"string","value":"lumi.XXXXX"}'
-        t = Proxy.Topic('AqaraHub', topic)
-        tn = Proxy.getTypeName(t, data)
-        self.assertEqual(tn, None)
+        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        self.assertEqual(len(devices), 0)
 
     def testTypeNameNoMatch2(self):
+        (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D0002786756/1/in/XX/YY'
         data = '10'
-        t = Proxy.Topic('AqaraHub', topic)
-        tn = Proxy.getTypeName(t, data)
-        self.assertEqual(tn, None)
+        Proxy.onData(devices, DeviceIDMock, 'AqaraHub', topic, data)
+        self.assertEqual(len(devices), 0)
         
 
 if __name__ == '__main__':

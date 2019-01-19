@@ -7,15 +7,38 @@ Proxy objects for dealing with MQTT and Domoticz Device objects.
 """
 import json
 
-def get(deviceObj):
-    return TempHumBaro(deviceObj)
+def onData(devices, createDevice, rootTopicStr, topicStr, dataStr):
+    topic = Topic(rootTopicStr, topicStr)
+    deviceID = topic.getDeviceID()
 
-def getTypeName(topic, data):
-    for i in ProxyObjects:
-        typeName = i.getTypeName(topic, data)
-        if typeName:
-            return typeName
+    devProxy = _getDeviceProxy(devices, deviceID)
+    if devProxy:
+        devProxy.processData(topic, dataStr)
+    else:
+        _registerDevice(devices, createDevice, deviceID, topic, dataStr)
+
+        
+def _getDeviceProxy(devices, deviceID):
+    for Unit in devices:
+        if devices[Unit].DeviceID == deviceID:
+            dev = devices[Unit]
+            for i in ProxyObjects:
+                a = i.getAdapter(devices, dev)
+                if a:
+                    return a
     return None
+
+
+def _registerDevice(devices, createDevice, deviceID, topic, data):
+    for i in ProxyObjects:
+        i.registerDevice(devices, createDevice, deviceID, topic, data)
+
+
+def _createDevice(devices, createDevice, deviceID, typeName):
+    umax = 0
+    for i in devices:
+        umax = max(umax, devices[i].Unit)
+    createDevice(Name=deviceID, Unit=umax+1, TypeName=typeName, DeviceID=deviceID, Used=1).Create()
 
 
 class Topic:
@@ -56,7 +79,8 @@ class Topic:
 
 
 class TempHumBaro:
-    def __init__(self, deviceObj):
+    def __init__(self, devices, deviceObj):
+        self.devices = devices
         self.deviceObj = deviceObj
         #SignalLevel 0-100
         #BatteryLevel 0-255
@@ -70,14 +94,27 @@ class TempHumBaro:
         self.forecast = 0
         self.batt = self.deviceObj.BatteryLevel
         self.signal = self.deviceObj.SignalLevel
-            
+
+    typeName = "Temp+Hum+Baro"
+    typeNameId = 84
+    
+    @staticmethod
+    def registerDevice(devices, createDevice, deviceID, topic, data):
+        t = TempHumBaro.getTypeName(topic, data)
+        if t:
+            _createDevice(devices, createDevice, deviceID, t)
+
+    @staticmethod
+    def getAdapter(devices, deviceObj):
+        return TempHumBaro(devices, deviceObj)
+
     @staticmethod
     def getTypeName(topic, data):
         t = topic.getInTopic()
         if t == 'Basic/Report Attributes/ModelIdentifier':
             jdata = json.loads(data)
             if jdata['value'] == "lumi.weather":
-                return "Temp+Hum+Baro"
+                return TempHumBaro.typeName
         return None
         
     def processData(self, topic, data):
