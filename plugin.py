@@ -3,7 +3,7 @@
 # Author: michlv
 #
 """
-<plugin key="AqaraHub-MQTT" name="AqaraHub open source (MQTT)" author="michlv" version="0.0.1" externallink="https://github.com/Frans-Willem/AqaraHub">
+<plugin key="AqaraHub-MQTT" name="AqaraHub (MQTT)" author="michlv" version="0.0.1" externallink="https://github.com/Frans-Willem/AqaraHub">
     <params>
         <param field="Address" label="IP Address" width="200px" required="true" default="nasvmln"/>
         <param field="Port" label="Connection" required="true" width="200px">
@@ -27,7 +27,10 @@
 """
 import Domoticz
 import random
+import time
 import Proxy
+
+PluginName = "AqaraHub-MQTT"
 
 class BasePlugin:
     enabled = False
@@ -46,8 +49,9 @@ class BasePlugin:
     def onConnect(self, Connection, Status, Description):
         if (Status == 0):
             Domoticz.Debug("MQTT connected successfully.")
+            id = "Domoticz_{0}_{1}_{2}".format(PluginName, int(time.time()), random.randint(1000, 9999))
             sendData = { 'Verb' : 'CONNECT',
-                         'ID' : "645364364" }
+                         'ID' : id }
             Connection.Send(sendData)
         else:
             Domoticz.Log("Failed to connect ("+str(Status)+") to: "+Parameters["Address"]+":"+Parameters["Port"]+" with error: "+Description)
@@ -88,7 +92,7 @@ class BasePlugin:
         Protocol = "MQTT"
         if (Parameters["Port"] == "8883"):
             Protocol = "MQTTS"
-        self.mqttConn = Domoticz.Connection(Name="AqaraHub-MQTT", Transport="TCP/IP", Protocol=Protocol, Address=Parameters["Address"], Port=Parameters["Port"])
+        self.mqttConn = Domoticz.Connection(Name=PluginName, Transport="TCP/IP", Protocol=Protocol, Address=Parameters["Address"], Port=Parameters["Port"])
         self.mqttConn.Connect()
 
     def processData(self, deviceID, topic, data):
