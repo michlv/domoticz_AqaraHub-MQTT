@@ -6,6 +6,7 @@
 Proxy objects for dealing with MQTT and Domoticz Device objects.
 """
 import json
+import threading
 
 def onData(devices, createDevice, rootTopicStr, topicStr, dataStr):
     topic = Topic(rootTopicStr, topicStr)
@@ -177,6 +178,11 @@ class TempHumBaro:
     }
 
 
+_timers = {}
+_timersLock = threading.Lock()
+
+_allowTimers = True
+
 class MotionSensor:
     def __init__(self, devices, deviceObj):
         self.devices = devices
@@ -185,9 +191,10 @@ class MotionSensor:
         #BatteryLevel 0-255
         #nValue
         self.value = self.deviceObj.nValue
+        self.illuminance = self.deviceObj.sValue
         self.batt = self.deviceObj.BatteryLevel
         self.signal = self.deviceObj.SignalLevel
-
+        
     Type = 244
     SubType = 73
     SwitchType = 8
@@ -236,13 +243,47 @@ class MotionSensor:
         c[1](self, v)
         
     def update(self):
-        self.deviceObj.Update(self.value, "", BatteryLevel=self.batt, SignalLevel=self.signal)
+        global _allowTimers
+        global _timersLock
+
+        _timersLock.acquire()
+        try:
+            obj = self.deviceObj
+            if not (self.value == obj.nValue and self.illuminance == obj.sValue and self.batt == obj.BatteryLevel and self.signal == obj.SignalLevel):
+                self.deviceObj.Update(self.value, self.illuminance, BatteryLevel=self.batt, SignalLevel=self.signal)
+            if self.value == 1 and _allowTimers:
+                self.updateTimer()
+        finally:
+            _timersLock.release()
+            
+    # Called from CriticalSection
+    def updateTimer(self):
+        global _timers
+
+        devId = self.deviceObj.DeviceID
+        if devId in _timers:
+            t = _timers[devId][1].cancel()
+        tm = threading.Timer(2.0, MotionSensor.timerCallback, [self])
+        _timers[devId] = [self, tm]
+        tm.start()
+    
+    def timerCallback(self):
+        global _timers
+        global _timersLock
+        
+        _timersLock.acquire()
+        try:
+            devId = self.deviceObj.DeviceID
+            self.deviceObj.Update(0, self.illuminance)
+            del _timers[devId]
+        finally:
+            _timersLock.release()
 
     def setXiaomiBattery(self, value):
         self.batt = int((value - 2.2)*100)        
 
     def setIlluminance(self, value):
-        self.illuminance = value
+        self.illuminance = str(value)
 
     def setOccupancy(self, value):
         self.value = int(bool(value))

@@ -2,6 +2,7 @@
 
 import unittest
 import adapter
+import time
 
 class TestTopic(unittest.TestCase):
 
@@ -213,6 +214,7 @@ class DeviceIDMSMock:
         self.sValue = ""
         self.SignalLevel = 100
         self.BatteryLevel = 255
+        self._updateCount = 0
 
     def Create(self):
         global _devices
@@ -227,11 +229,14 @@ class DeviceIDMSMock:
         if SignalLevel is not None:
             self.SignalLevel = SignalLevel
 
+        self._updateCount += 1
 
 class TestMotionSensorAdapter(unittest.TestCase):
     def getMock(self):
         global _devices
 
+        adapter._allowTimers = False
+        
         _devices = {}
         device = DeviceIDMSMock()
         a = adapter.MotionSensor(_devices, device)
@@ -275,7 +280,7 @@ class TestMotionSensorAdapter(unittest.TestCase):
         t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.nValue, 0)
-        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.sValue, "6.0")
         self.assertEqual(dev.SignalLevel, 100)
         self.assertEqual(dev.BatteryLevel, 255)
 
@@ -325,6 +330,28 @@ class TestMotionSensorAdapter(unittest.TestCase):
         self.assertEqual(dev.BatteryLevel, 85)
         self.assertEqual(dev.SignalLevel, 100)
 
-
+    def testUpdateNotCalledIfTheSame(self):
+        (devices, dev, proxy) = self.getMock()
+        self.assertEqual(dev._updateCount, 0)
+        proxy.update()
+        self.assertEqual(dev._updateCount, 0)
+        proxy.value = 1
+        proxy.update()
+        self.assertEqual(dev._updateCount, 1)
+        
+    def testOffTimers(self):
+        (devices, dev, proxy) = self.getMock()
+        adapter._allowTimers = True
+        self.assertEqual(len(adapter._timers), 0)
+        self.assertEqual(dev.nValue, 0)
+        proxy.value = 1
+        proxy.update()
+        self.assertEqual(dev.nValue, 1)
+        self.assertEqual(len(adapter._timers), 1)
+        time.sleep(3)
+        self.assertEqual(dev.nValue, 0)
+        self.assertEqual(len(adapter._timers), 0)
+        
+        
 if __name__ == '__main__':
     unittest.main()
