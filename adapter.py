@@ -298,6 +298,83 @@ class MotionSensor:
         "1": [0.001, setXiaomiBattery],
         "100": ["bool", setOccupancy]
     }
-        
 
-ProxyObjects = [TempHumBaro, MotionSensor]
+
+class DoorSensor:
+    def __init__(self, devices, deviceObj):
+        self.devices = devices
+        self.deviceObj = deviceObj
+        #SignalLevel 0-100
+        #BatteryLevel 0-255
+        #nValue
+        self.value = self.deviceObj.nValue
+        self.batt = self.deviceObj.BatteryLevel
+        self.signal = self.deviceObj.SignalLevel
+        
+    Type = 244
+    SubType = 73
+    SwitchType = 11
+    
+    @staticmethod
+    def registerDevice(devices, createDevice, deviceID, topic, data):
+        m = _getSensorModel(topic, data)
+        if m == "lumi.sensor_magnet.aq2":
+            _createDeviceByType(devices, createDevice, deviceID, DoorSensor.Type, DoorSensor.SubType, DoorSensor.SwitchType)
+
+    @staticmethod
+    def getAdapter(devices, deviceObj):
+        if deviceObj.Type == DoorSensor.Type and deviceObj.SubType == DoorSensor.SubType and deviceObj.SwitchType == DoorSensor.SwitchType:
+            return DoorSensor(devices, deviceObj)
+
+    def processData(self, topic, data):
+        inTopic = topic.getInTopic()
+        if topic.getTopic() == 'linkquality':
+            self.signal = int(int(data)/10)
+            self.update()
+        elif inTopic in self.DataTopic:
+            jdata = json.loads(data)
+            c = self.DataTopic[inTopic]
+            self.processValue(c, jdata['value'])
+            self.update()
+        elif inTopic == 'Basic/Report Attributes/0xFF01':
+            jdata = json.loads(data)
+            for i in jdata['value']:
+                u = False
+                if i in self.XiaomiFields:
+                    c = self.XiaomiFields[i]
+                    vraw = jdata['value'][i]['value']
+                    self.processValue(c, vraw)
+                    u = True
+                if u:
+                    self.update()
+                
+    def processValue(self, c, vraw):
+        vtype = c[0]
+        if vtype == "bool":
+            v = vraw
+        else:
+            v = float(vraw) * vtype
+        c[1](self, v)
+
+    def update(self):
+        obj = self.deviceObj
+        if not (self.value == obj.nValue and self.batt == obj.BatteryLevel and self.signal == obj.SignalLevel):
+            self.deviceObj.Update(self.value, "", BatteryLevel=self.batt, SignalLevel=self.signal)
+            
+    def setXiaomiBattery(self, value):
+        self.batt = int((value - 2.2)*100)        
+
+    def setDoorOpen(self, value):
+        self.value = int(bool(value))
+        
+    DataTopic = {
+        "OnOff/Report Attributes/OnOff": ["bool", setDoorOpen],
+    }
+
+    XiaomiFields = {
+        "1": [0.001, setXiaomiBattery],
+        "100": ["bool", setDoorOpen]
+    }
+
+
+ProxyObjects = [TempHumBaro, MotionSensor, DoorSensor]
