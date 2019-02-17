@@ -94,121 +94,14 @@ def _getSensorModel(topic, data):
     return None
 
 
-class TempHumBaro:
+class XiaomiSensorWithBatteryAndLinkquality:
     def __init__(self, devices, deviceObj):
         self.devices = devices
         self.deviceObj = deviceObj
         #SignalLevel 0-100
         #BatteryLevel 0-255
-        #sValue
-        (self.temp, self.hum, self.hum_stat, self.baro, self.forecast) = self.deviceObj.sValue.split(';')
-        # Temperature;Humidity;Humidity Status;Barometer;Forecast
-        self.temp = float(self.temp)
-        self.hum = float(self.hum)
-        self.hum_stat = 0
-        self.baro = float(self.baro)
-        self.forecast = 0
         self.batt = self.deviceObj.BatteryLevel
         self.signal = self.deviceObj.SignalLevel
-
-    TypeName = "Temp+Hum+Baro"
-    Type = 84
-    
-    @staticmethod
-    def registerDevice(devices, createDevice, deviceID, topic, data):
-        m = _getSensorModel(topic, data)
-        if m == "lumi.weather":
-            _createDeviceByName(devices, createDevice, deviceID, TempHumBaro.TypeName)
-
-    @staticmethod
-    def getAdapter(devices, deviceObj):
-        if deviceObj.Type == TempHumBaro.Type:
-            return TempHumBaro(devices, deviceObj)
-
-    def processData(self, topic, data):
-        inTopic = topic.getInTopic()
-        if topic.getTopic() == 'linkquality':
-            self.signal = int(int(data)/10)
-            self.update()
-        elif inTopic in self.DataTopic:
-            jdata = json.loads(data)
-            c = self.DataTopic[inTopic]
-            v = float(jdata['value']) * c[0]
-            c[1](self, v)
-            self.update()
-        elif inTopic == 'Basic/Report Attributes/0xFF01':
-            jdata = json.loads(data)
-            for i in jdata['value']:
-                u = False
-                if i in self.XiaomiFields:
-                    c = self.XiaomiFields[i]
-                    v = float(jdata['value'][i]['value']) * c[0]
-                    c[1](self, v)
-                    u = True
-                if u:
-                    self.update()
-                
-    def setTemperature(self, value):
-        self.temp = value
-        
-    def setHumidity(self, value):
-        self.hum = value
-        
-    def setPressure(self, value):
-        self.baro = value
-
-    def setXiaomiBattery(self, value):
-        self.batt = int((value - 2.2)*100)        
-    
-    def update(self):
-        sValue = ';'.join((format(self.temp, '.2f'), format(self.hum, '.2f'), str(self.hum_stat), format(self.baro, '.2f'), str(self.forecast)))
-        self.deviceObj.Update(0, sValue, BatteryLevel=self.batt, SignalLevel=self.signal)
-    
-    DataTopic = {
-        "Temperature Measurement/Report Attributes/MeasuredValue": [0.01, setTemperature],
-        "Relative Humidity Measurement/Report Attributes/MeasuredValue": [0.01, setHumidity],
-        "Pressure Measurement/Report Attributes/ScaledValue": [0.1, setPressure]
-    }
-    
-    XiaomiFields = {
-        "1": [0.001, setXiaomiBattery],
-        "100": [0.01, setTemperature],
-        "101": [0.01, setHumidity],
-        "102": [0.01, setPressure]
-    }
-
-
-_timers = {}
-_timersLock = threading.Lock()
-
-_allowTimers = True
-
-class MotionSensor:
-    def __init__(self, devices, deviceObj):
-        self.devices = devices
-        self.deviceObj = deviceObj
-        #SignalLevel 0-100
-        #BatteryLevel 0-255
-        #nValue
-        self.value = self.deviceObj.nValue
-        self.illuminance = self.deviceObj.sValue
-        self.batt = self.deviceObj.BatteryLevel
-        self.signal = self.deviceObj.SignalLevel
-        
-    Type = 244
-    SubType = 73
-    SwitchType = 8
-    
-    @staticmethod
-    def registerDevice(devices, createDevice, deviceID, topic, data):
-        m = _getSensorModel(topic, data)
-        if m == "lumi.sensor_motion.aq2":
-            _createDeviceByType(devices, createDevice, deviceID, MotionSensor.Type, MotionSensor.SubType, MotionSensor.SwitchType)
-
-    @staticmethod
-    def getAdapter(devices, deviceObj):
-        if deviceObj.Type == MotionSensor.Type and deviceObj.SubType == MotionSensor.SubType and deviceObj.SwitchType == MotionSensor.SwitchType:
-            return MotionSensor(devices, deviceObj)
 
     def processData(self, topic, data):
         inTopic = topic.getInTopic()
@@ -241,7 +134,103 @@ class MotionSensor:
         else:
             v = float(vraw) * vtype
         c[1](self, v)
+
+    def setXiaomiBattery(self, value):
+        self.batt = int((value - 2.2)*100)        
         
+    # Overwite below definitions in derived object
+    def update(self):
+        pass
+
+    DataTopic = {
+        #"Temperature Measurement/Report Attributes/MeasuredValue": [0.01, setTemperature],
+    }
+    
+    XiaomiFields = {
+        #"1": [0.001, XiaomiSensorWithBatteryAndLinkquality.setXiaomiBattery],
+    }
+
+
+class TempHumBaro(XiaomiSensorWithBatteryAndLinkquality):
+    def __init__(self, devices, deviceObj):
+        super().__init__(devices, deviceObj)
+        #sValue
+        (self.temp, self.hum, self.hum_stat, self.baro, self.forecast) = self.deviceObj.sValue.split(';')
+        # Temperature;Humidity;Humidity Status;Barometer;Forecast
+        self.temp = float(self.temp)
+        self.hum = float(self.hum)
+        self.hum_stat = 0
+        self.baro = float(self.baro)
+        self.forecast = 0
+
+    TypeName = "Temp+Hum+Baro"
+    Type = 84
+    
+    @staticmethod
+    def registerDevice(devices, createDevice, deviceID, topic, data):
+        m = _getSensorModel(topic, data)
+        if m == "lumi.weather":
+            _createDeviceByName(devices, createDevice, deviceID, TempHumBaro.TypeName)
+
+    @staticmethod
+    def getAdapter(devices, deviceObj):
+        if deviceObj.Type == TempHumBaro.Type:
+            return TempHumBaro(devices, deviceObj)
+
+    def setTemperature(self, value):
+        self.temp = value
+        
+    def setHumidity(self, value):
+        self.hum = value
+        
+    def setPressure(self, value):
+        self.baro = value
+
+    def update(self):
+        sValue = ';'.join((format(self.temp, '.2f'), format(self.hum, '.2f'), str(self.hum_stat), format(self.baro, '.2f'), str(self.forecast)))
+        self.deviceObj.Update(0, sValue, BatteryLevel=self.batt, SignalLevel=self.signal)
+    
+    DataTopic = {
+        "Temperature Measurement/Report Attributes/MeasuredValue": [0.01, setTemperature],
+        "Relative Humidity Measurement/Report Attributes/MeasuredValue": [0.01, setHumidity],
+        "Pressure Measurement/Report Attributes/ScaledValue": [0.1, setPressure]
+    }
+    
+    XiaomiFields = {
+        "1": [0.001, XiaomiSensorWithBatteryAndLinkquality.setXiaomiBattery],
+        "100": [0.01, setTemperature],
+        "101": [0.01, setHumidity],
+        "102": [0.01, setPressure]
+    }
+
+
+_timers = {}
+_timersLock = threading.Lock()
+
+_allowTimers = True
+
+class MotionSensor(XiaomiSensorWithBatteryAndLinkquality):
+    def __init__(self, devices, deviceObj):
+        super().__init__(devices, deviceObj)
+        #nValue
+        self.value = self.deviceObj.nValue
+        self.illuminance = self.deviceObj.sValue
+        
+    Type = 244
+    SubType = 73
+    SwitchType = 8
+    
+    @staticmethod
+    def registerDevice(devices, createDevice, deviceID, topic, data):
+        m = _getSensorModel(topic, data)
+        if m == "lumi.sensor_motion.aq2":
+            _createDeviceByType(devices, createDevice, deviceID, MotionSensor.Type, MotionSensor.SubType, MotionSensor.SwitchType)
+
+    @staticmethod
+    def getAdapter(devices, deviceObj):
+        if deviceObj.Type == MotionSensor.Type and deviceObj.SubType == MotionSensor.SubType and deviceObj.SwitchType == MotionSensor.SwitchType:
+            return MotionSensor(devices, deviceObj)
+
     def update(self):
         global _allowTimers
         global _timersLock
@@ -279,9 +268,6 @@ class MotionSensor:
         finally:
             _timersLock.release()
 
-    def setXiaomiBattery(self, value):
-        self.batt = int((value - 2.2)*100)        
-
     def setIlluminance(self, value):
         self.illuminance = str(value)
 
@@ -295,21 +281,16 @@ class MotionSensor:
 
 
     XiaomiFields = {
-        "1": [0.001, setXiaomiBattery],
+        "1": [0.001, XiaomiSensorWithBatteryAndLinkquality.setXiaomiBattery],
         "100": ["bool", setOccupancy]
     }
 
 
-class DoorSensor:
+class DoorSensor(XiaomiSensorWithBatteryAndLinkquality):
     def __init__(self, devices, deviceObj):
-        self.devices = devices
-        self.deviceObj = deviceObj
-        #SignalLevel 0-100
-        #BatteryLevel 0-255
+        super().__init__(devices, deviceObj)
         #nValue
         self.value = self.deviceObj.nValue
-        self.batt = self.deviceObj.BatteryLevel
-        self.signal = self.deviceObj.SignalLevel
         
     Type = 244
     SubType = 73
@@ -326,44 +307,11 @@ class DoorSensor:
         if deviceObj.Type == DoorSensor.Type and deviceObj.SubType == DoorSensor.SubType and deviceObj.SwitchType == DoorSensor.SwitchType:
             return DoorSensor(devices, deviceObj)
 
-    def processData(self, topic, data):
-        inTopic = topic.getInTopic()
-        if topic.getTopic() == 'linkquality':
-            self.signal = int(int(data)/10)
-            self.update()
-        elif inTopic in self.DataTopic:
-            jdata = json.loads(data)
-            c = self.DataTopic[inTopic]
-            self.processValue(c, jdata['value'])
-            self.update()
-        elif inTopic == 'Basic/Report Attributes/0xFF01':
-            jdata = json.loads(data)
-            for i in jdata['value']:
-                u = False
-                if i in self.XiaomiFields:
-                    c = self.XiaomiFields[i]
-                    vraw = jdata['value'][i]['value']
-                    self.processValue(c, vraw)
-                    u = True
-                if u:
-                    self.update()
-                
-    def processValue(self, c, vraw):
-        vtype = c[0]
-        if vtype == "bool":
-            v = vraw
-        else:
-            v = float(vraw) * vtype
-        c[1](self, v)
-
     def update(self):
         obj = self.deviceObj
         if not (self.value == obj.nValue and self.batt == obj.BatteryLevel and self.signal == obj.SignalLevel):
             self.deviceObj.Update(self.value, "", BatteryLevel=self.batt, SignalLevel=self.signal)
             
-    def setXiaomiBattery(self, value):
-        self.batt = int((value - 2.2)*100)        
-
     def setDoorOpen(self, value):
         self.value = int(bool(value))
         
@@ -372,7 +320,7 @@ class DoorSensor:
     }
 
     XiaomiFields = {
-        "1": [0.001, setXiaomiBattery],
+        "1": [0.001, XiaomiSensorWithBatteryAndLinkquality.setXiaomiBattery],
         "100": ["bool", setDoorOpen]
     }
 
