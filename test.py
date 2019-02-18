@@ -280,7 +280,7 @@ class TestMotionSensorAdapter(unittest.TestCase):
         t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.nValue, 0)
-        self.assertEqual(dev.sValue, "6.0")
+        #self.assertEqual(dev.sValue, "6.0")
         self.assertEqual(dev.SignalLevel, 100)
         self.assertEqual(dev.BatteryLevel, 255)
 
@@ -325,7 +325,7 @@ class TestMotionSensorAdapter(unittest.TestCase):
         topic = 'AqaraHub/00158D0002E96C81/1/in/Basic/Report Attributes/0xFF01'
         adapter.onData(devices, DeviceIDMSMock, 'AqaraHub', topic, data)
         dev = devices[1]
-        self.assertEqual(dev.nValue, 1)
+        self.assertEqual(dev.nValue, 0) # Does not update status
         self.assertEqual(dev.sValue, "")
         self.assertEqual(dev.BatteryLevel, 85)
         self.assertEqual(dev.SignalLevel, 100)
@@ -338,9 +338,14 @@ class TestMotionSensorAdapter(unittest.TestCase):
         proxy.value = 1
         proxy.update()
         self.assertEqual(dev._updateCount, 1)
+
+    def testMotionTimeoutValue(self):
+        (devices, dev, proxy) = self.getMock()
+        self.assertEqual(proxy.motionTimeout, 75)
         
     def testOffTimers(self):
         (devices, dev, proxy) = self.getMock()
+        proxy.motionTimeout = 2
         adapter._allowTimers = True
         self.assertEqual(len(adapter._timers), 0)
         self.assertEqual(dev.nValue, 0)

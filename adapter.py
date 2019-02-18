@@ -215,6 +215,7 @@ class MotionSensor(XiaomiSensorWithBatteryAndLinkquality):
         #nValue
         self.value = self.deviceObj.nValue
         self.illuminance = self.deviceObj.sValue
+        self.motionTimeout = 2*60
         
     Type = 244
     SubType = 73
@@ -252,7 +253,7 @@ class MotionSensor(XiaomiSensorWithBatteryAndLinkquality):
         devId = self.deviceObj.DeviceID
         if devId in _timers:
             t = _timers[devId][1].cancel()
-        tm = threading.Timer(2.0, MotionSensor.timerCallback, [self])
+        tm = threading.Timer(self.motionTimeout, MotionSensor.timerCallback, [self])
         _timers[devId] = [self, tm]
         tm.start()
     
@@ -269,7 +270,8 @@ class MotionSensor(XiaomiSensorWithBatteryAndLinkquality):
             _timersLock.release()
 
     def setIlluminance(self, value):
-        self.illuminance = str(value)
+        #self.illuminance = str(value)
+        pass
 
     def setOccupancy(self, value):
         self.value = int(bool(value))
@@ -282,7 +284,7 @@ class MotionSensor(XiaomiSensorWithBatteryAndLinkquality):
 
     XiaomiFields = {
         "1": [0.001, XiaomiSensorWithBatteryAndLinkquality.setXiaomiBattery],
-        "100": ["bool", setOccupancy]
+        #"100": ["bool", setOccupancy]
     }
 
 
