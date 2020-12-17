@@ -115,6 +115,13 @@ def onHeartbeat():
     global _plugin
     _plugin.onHeartbeat()
 
+def onNotification(Name, Subject, Text, Status, Priority, Sound, ImageFile):
+    Domoticz.Log("onNotification called: "+Name+Subject+Text+Status)
+
+def onStop():
+    Domoticz.Log("onStop called")
+
+
     # Generic helper functions
 def DumpConfigToLog():
     for x in Parameters:
