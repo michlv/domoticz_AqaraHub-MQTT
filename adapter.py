@@ -136,7 +136,8 @@ class XiaomiSensorWithBatteryAndLinkquality:
         c[1](self, v)
 
     def setXiaomiBattery(self, value):
-        self.batt = int((value - 2.765)*100)
+        base = 2.765
+        self.batt = min(int(100/(3.05-base)*(value-base)), 100)
 
     # Overwite below definitions in derived object
     def update(self):
