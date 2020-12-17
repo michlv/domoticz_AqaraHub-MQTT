@@ -124,7 +124,7 @@ class XiaomiSensorWithBatteryAndLinkquality:
                     u = True
                 if u:
                     self.update()
-                
+
     def processValue(self, c, vraw):
         vtype = c[0]
         if vtype == "bool":
@@ -136,8 +136,8 @@ class XiaomiSensorWithBatteryAndLinkquality:
         c[1](self, v)
 
     def setXiaomiBattery(self, value):
-        self.batt = int((value - 2.2)*100)        
-        
+        self.batt = int((value - 2.765)*100)
+
     # Overwite below definitions in derived object
     def update(self):
         pass

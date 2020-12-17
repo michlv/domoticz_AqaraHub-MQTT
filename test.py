@@ -153,7 +153,7 @@ class TestTempHumBaroAdapter(unittest.TestCase):
         t = adapter.Topic('AqaraHub', topic)
         proxy.processData(t, data)
         self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
-        self.assertEqual(dev.BatteryLevel, 80)
+        self.assertEqual(dev.BatteryLevel, 23)
         self.assertEqual(dev.SignalLevel, 100)
 
     def testCreateAndUpdate(self):
@@ -183,7 +183,7 @@ class TestTempHumBaroAdapter(unittest.TestCase):
         adapter.onData(devices, DeviceIDTHBMock, 'AqaraHub', topic, data)
         dev = devices[1]
         self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
-        self.assertEqual(dev.BatteryLevel, 80)
+        self.assertEqual(dev.BatteryLevel, 23)
         self.assertEqual(dev.SignalLevel, 100)
     
     def testTypeNameNoMatch1(self):
@@ -327,7 +327,7 @@ class TestMotionSensorAdapter(unittest.TestCase):
         dev = devices[1]
         self.assertEqual(dev.nValue, 0) # Does not update status
         self.assertEqual(dev.sValue, "")
-        self.assertEqual(dev.BatteryLevel, 85)
+        self.assertEqual(dev.BatteryLevel, 29)
         self.assertEqual(dev.SignalLevel, 100)
 
     def testUpdateNotCalledIfTheSame(self):
@@ -341,7 +341,7 @@ class TestMotionSensorAdapter(unittest.TestCase):
 
     def testMotionTimeoutValue(self):
         (devices, dev, proxy) = self.getMock()
-        self.assertEqual(proxy.motionTimeout, 75)
+        self.assertEqual(proxy.motionTimeout, 120)
         
     def testOffTimers(self):
         (devices, dev, proxy) = self.getMock()
@@ -475,7 +475,7 @@ class TestDoorSensorAdapter(unittest.TestCase):
         dev = devices[1]
         self.assertEqual(dev.nValue, 1)
         self.assertEqual(dev.sValue, "")
-        self.assertEqual(dev.BatteryLevel, 85)
+        self.assertEqual(dev.BatteryLevel, 29)
         self.assertEqual(dev.SignalLevel, 100)
 
     def testXiaomiBlockOn(self):
@@ -486,7 +486,7 @@ class TestDoorSensorAdapter(unittest.TestCase):
         proxy.processData(t, data)
         self.assertEqual(dev.nValue, 1)
         self.assertEqual(dev.sValue, "")
-        self.assertEqual(dev.BatteryLevel, 85)
+        self.assertEqual(dev.BatteryLevel, 29)
         self.assertEqual(dev.SignalLevel, 100)
         
     def testXiaomiBlockOff(self):
@@ -500,7 +500,7 @@ class TestDoorSensorAdapter(unittest.TestCase):
         proxy.processData(t, data)
         self.assertEqual(dev.nValue, 0)
         self.assertEqual(dev.sValue, "")
-        self.assertEqual(dev.BatteryLevel, 85)
+        self.assertEqual(dev.BatteryLevel, 29)
         self.assertEqual(dev.SignalLevel, 100)
 
                 
