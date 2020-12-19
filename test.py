@@ -156,6 +156,26 @@ class TestTempHumBaroAdapter(unittest.TestCase):
         self.assertEqual(dev.BatteryLevel, 84)
         self.assertEqual(dev.SignalLevel, 100)
 
+    def testXiaomiBlockBattTooHigh(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D000272C69E/1/in/Basic/Report Attributes/0xFF01'
+        data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3205},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
+        self.assertEqual(dev.BatteryLevel, 100)
+        self.assertEqual(dev.SignalLevel, 100)
+
+    def testXiaomiBlockBattTooLow(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D000272C69E/1/in/Basic/Report Attributes/0xFF01'
+        data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":2505},"10":{"type":"uint16","value":0},"100":{"type":"int16","value":2206},"101":{"type":"uint16","value":5527},"102":{"type":"int32","value":102982},"4":{"type":"uint16","value":17320},"5":{"type":"uint16","value":6},"6":{"type":"uint40","value":1}}}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.sValue, "22.06;55.27;0;1029.82;0")
+        self.assertEqual(dev.BatteryLevel, 0)
+        self.assertEqual(dev.SignalLevel, 100)
+
     def testCreateAndUpdate(self):
         (devices, dev, proxy) = self.getMock()
         topic = 'AqaraHub/00158D0002786756/1/in/Basic/Report Attributes/ModelIdentifier'
