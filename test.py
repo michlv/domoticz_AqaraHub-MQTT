@@ -29,7 +29,28 @@ class TestTopic(unittest.TestCase):
         self.assertEqual(t.getDeviceID(), "XXYYCC")
         self.assertEqual(t.getTopic(), "1/in/Temperature")
         self.assertEqual(t.getInTopic(), "Temperature")
-        
+
+
+class TestGetSensorModel(unittest.TestCase):
+
+	def testReportAttributes(self):
+            t = adapter.Topic("AqaraHub", "AqaraHub/XXYYCC/1/in/Basic/Report Attributes/Model")
+            d = '{"type":"string","value":"lumi.XXX"}'
+            m = adapter._getSensorModel(t, d)
+            self.assertEqual(m, None)
+
+	def testReportAttributes(self):
+            t = adapter.Topic("AqaraHub", "AqaraHub/XXYYCC/1/in/Basic/Report Attributes/ModelIdentifier")
+            d = '{"type":"string","value":"lumi.XXX"}'
+            m = adapter._getSensorModel(t, d)
+            self.assertEqual(m, 'lumi.XXX')
+
+	def testReadAttributesResponse(self):
+            t = adapter.Topic("AqaraHub", "AqaraHub/XXYYCC/1/in/Basic/Read Attributes Response/ModelIdentifier")
+            d = '{"success":{"type":"string","value":"TH01"}}'
+            m = adapter._getSensorModel(t, d)
+            self.assertEqual(m, 'TH01')
+
 
 _devices = {}
 
@@ -219,6 +240,78 @@ class TestTempHumBaroAdapter(unittest.TestCase):
         data = '10'
         adapter.onData(devices, DeviceIDTHBMock, 'AqaraHub', topic, data)
         self.assertEqual(len(devices), 0)
+
+
+class DeviceIDTHMock:
+    def __init__(self, Name=None, Unit=None, TypeName=None, DeviceID=None, Used=None):
+        self.Name = Name
+        self.Unit = Unit
+        self.TypeName = TypeName
+        self.Type = 82
+        self.DeviceID = DeviceID
+        self.Used = Used
+        # Temperature;Humidity;Humidity Status
+        self.nValue = 0
+        self.sValue = "11.22;59.33;0"
+        self.SignalLevel = 100
+        self.BatteryLevel = 255
+
+    def Create(self):
+        global _devices
+    
+        _devices[self.Unit] = self
+
+    def Update(self, nValue, sValue, BatteryLevel=None, SignalLevel=None):
+        self.nValue = nValue
+        self.sValue = sValue
+        if BatteryLevel is not None:
+            self.BatteryLevel = BatteryLevel
+        if SignalLevel is not None:
+            self.SignalLevel = SignalLevel
+
+
+class TestTempHumAdapter(unittest.TestCase):
+    def getMock(self):
+        global _devices
+
+        _devices = {}
+        device = DeviceIDTHMock()
+        a = adapter.TempHum(_devices, device)
+        return (_devices, device, a)
+    
+    def testCreation(self):
+        (devices, dev, proxy) = self.getMock()
+        self.assertTrue(isinstance(proxy, adapter.TempHum))
+        self.assertEqual(dev.sValue, "11.22;59.33;0")
+        self.assertEqual(proxy.temp, 11.22)
+        self.assertEqual(proxy.hum, 59.33)
+        proxy.setTemperature(22.11)
+        proxy.setHumidity(63.21)
+        proxy.update()
+        self.assertEqual(dev.sValue, "22.11;63.21;0")
+        self.assertEqual(dev.BatteryLevel, 255)
+        self.assertEqual(dev.SignalLevel, 100)
+
+    def testTemperature(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00124B00226A2C3B/1/in/Temperature Measurement/Report Attributes/MeasuredValue'
+        data = '{"type":"int16","value":2531}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.sValue, "25.31;59.33;0")
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 255)
+
+    def testHumidity(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00124B00226A2C3B/1/in/Relative Humidity Measurement/Report Attributes/MeasuredValue'
+        data = '{"type":"uint16","value":5023}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.sValue, "11.22;50.23;0")
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 255)
+
 
 
 class DeviceIDMSMock:
@@ -637,8 +730,6 @@ class TestVibrationSensorAdapter(unittest.TestCase):
         self.assertEqual(dev.BatteryLevel, 100)
         self.assertEqual(dev.SignalLevel, 100)
 
-                
 
-        
 if __name__ == '__main__':
     unittest.main()

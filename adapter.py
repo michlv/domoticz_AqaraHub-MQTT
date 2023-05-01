@@ -91,6 +91,9 @@ def _getSensorModel(topic, data):
     if t == 'Basic/Report Attributes/ModelIdentifier':
         jdata = json.loads(data)
         return jdata['value']
+    if t == 'Basic/Read Attributes Response/ModelIdentifier':
+        jdata = json.loads(data)
+        return jdata['success']['value']
     return None
 
 
@@ -368,4 +371,47 @@ class VibrationSensor(XiaomiSensorWithBatteryAndLinkquality):
     }
 
 
-ProxyObjects = [TempHumBaro, MotionSensor, DoorSensor, VibrationSensor]
+class TempHum(XiaomiSensorWithBatteryAndLinkquality):
+    def __init__(self, devices, deviceObj):
+        super().__init__(devices, deviceObj)
+        #sValue
+        (self.temp, self.hum, self.hum_stat) = self.deviceObj.sValue.split(';')
+        # Temperature;Humidity;Humidity Status
+        self.temp = float(self.temp)
+        self.hum = float(self.hum)
+        self.hum_stat = 0
+
+    TypeName = "Temp+Hum"
+    Type = 82
+    
+    @staticmethod
+    def registerDevice(devices, createDevice, deviceID, topic, data):
+        m = _getSensorModel(topic, data)
+        if m == "TH01":
+            _createDeviceByName(devices, createDevice, deviceID, TempHum.TypeName)
+
+    @staticmethod
+    def getAdapter(devices, deviceObj):
+        if deviceObj.Type == TempHum.Type:
+            return TempHum(devices, deviceObj)
+
+    def setTemperature(self, value):
+        self.temp = value
+        
+    def setHumidity(self, value):
+        self.hum = value
+        
+    def update(self):
+        sValue = ';'.join((format(self.temp, '.2f'), format(self.hum, '.2f'), str(self.hum_stat)))
+        self.deviceObj.Update(0, sValue, BatteryLevel=self.batt, SignalLevel=self.signal)
+    
+    DataTopic = {
+        "Temperature Measurement/Report Attributes/MeasuredValue": [0.01, setTemperature],
+        "Relative Humidity Measurement/Report Attributes/MeasuredValue": [0.01, setHumidity],
+    }
+    
+    XiaomiFields = {
+    }
+
+
+ProxyObjects = [TempHumBaro, MotionSensor, DoorSensor, VibrationSensor, TempHum]
