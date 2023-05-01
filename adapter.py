@@ -400,6 +400,9 @@ class TempHum(XiaomiSensorWithBatteryAndLinkquality):
         
     def setHumidity(self, value):
         self.hum = value
+
+    def setBattery(self, value):
+        self.batt = int(value)
         
     def update(self):
         sValue = ';'.join((format(self.temp, '.2f'), format(self.hum, '.2f'), str(self.hum_stat)))
@@ -408,6 +411,7 @@ class TempHum(XiaomiSensorWithBatteryAndLinkquality):
     DataTopic = {
         "Temperature Measurement/Report Attributes/MeasuredValue": [0.01, setTemperature],
         "Relative Humidity Measurement/Report Attributes/MeasuredValue": [0.01, setHumidity],
+        "Power Configuration/Report Attributes/Battery Percentage Remaining": [0.1, setBattery],
     }
     
     XiaomiFields = {

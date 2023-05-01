@@ -312,6 +312,16 @@ class TestTempHumAdapter(unittest.TestCase):
         self.assertEqual(dev.SignalLevel, 100)
         self.assertEqual(dev.BatteryLevel, 255)
 
+    def testBatt(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00124B00226A2C3B/1/in/Power Configuration/Report Attributes/Battery Percentage Remaining'
+        data = '{"type":"uint8","value":162}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.sValue, "11.22;59.33;0")
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 16)
+
 
 
 class DeviceIDMSMock:
