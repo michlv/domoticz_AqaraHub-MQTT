@@ -329,5 +329,43 @@ class DoorSensor(XiaomiSensorWithBatteryAndLinkquality):
         "100": ["bool", setDoorOpen]
     }
 
+class VibrationSensor(XiaomiSensorWithBatteryAndLinkquality):
+    def __init__(self, devices, deviceObj):
+        super().__init__(devices, deviceObj)
+        #nValue%
+        self.value = self.deviceObj.nValue
+        
+    Type = 244
+    SubType = 73
+    SwitchType = 11
+    
+    @staticmethod
+    def registerDevice(devices, createDevice, deviceID, topic, data):
+        m = _getSensorModel(topic, data)
+        if m == "lumi.vibration.aq1":
+            _createDeviceByType(devices, createDevice, deviceID, VibrationSensor.Type, VibrationSensor.SubType, VibrationSensor.SwitchType)
 
-ProxyObjects = [TempHumBaro, MotionSensor, DoorSensor]
+    @staticmethod
+    def getAdapter(devices, deviceObj):
+        if deviceObj.Type == VibrationSensor.Type and deviceObj.SubType == VibrationSensor.SubType and deviceObj.SwitchType == VibrationSensor.SwitchType:
+            return VibrationSensor(devices, deviceObj)
+
+    def update(self):
+        obj = self.deviceObj
+        if not (self.value == obj.nValue and self.batt == obj.BatteryLevel and self.signal == obj.SignalLevel):
+            self.deviceObj.Update(self.value, "", BatteryLevel=self.batt, SignalLevel=self.signal)
+            
+    def setDoorOpen(self, value):
+        self.value = int(bool(value))
+        
+    DataTopic = {
+        "OnOff/Report Attributes/OnOff": ["bool", setDoorOpen],
+    }
+
+    XiaomiFields = {
+        "1": [0.001, XiaomiSensorWithBatteryAndLinkquality.setXiaomiBattery],
+        "100": ["bool", setDoorOpen]
+    }
+
+
+ProxyObjects = [TempHumBaro, MotionSensor, DoorSensor, VibrationSensor]

@@ -523,6 +523,120 @@ class TestDoorSensorAdapter(unittest.TestCase):
         self.assertEqual(dev.BatteryLevel, 100)
         self.assertEqual(dev.SignalLevel, 100)
 
+
+class TestVibrationSensorAdapter(unittest.TestCase):
+    def getMock(self):
+        global _devices
+        
+        _devices = {}
+        device = DeviceIDDSMock()
+        a = adapter.VibrationSensor(_devices, device)
+        return (_devices, device, a)
+    
+    def testCreation(self):
+        (devices, dev, proxy) = self.getMock()
+        self.assertTrue(isinstance(proxy, adapter.VibrationSensor))
+        self.assertEqual(dev.nValue, 0)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(proxy.value, 0)
+        proxy.setDoorOpen("true")
+        proxy.update()
+        self.assertEqual(dev.nValue, 1)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.BatteryLevel, 255)
+        self.assertEqual(dev.SignalLevel, 100)
+
+    def testLinkQuality(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D00025EEA0D/linkquality'
+        data = '15'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.SignalLevel, 1)
+        self.assertEqual(dev.BatteryLevel, 255)
+
+    def testDoorOpenOff(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D00025EEA0D/1/in/OnOff/Report Attributes/OnOff'
+        data = '{"type":"bool","value":false}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.nValue, 0)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 255)
+
+    def testDoorOpenOn(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D00025EEA0D/1/in/OnOff/Report Attributes/OnOff'
+        data = '{"type":"bool","value":true}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.nValue, 1)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.SignalLevel, 100)
+        self.assertEqual(dev.BatteryLevel, 255)
+        
+    def testCreateAndUpdate(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D00025EEA0D/1/in/Basic/Report Attributes/ModelIdentifier'
+        data = '{"type":"string","value":"lumi.sensor_magnet.aq2"}'
+        adapter.onData(devices, DeviceIDDSMock, 'AqaraHub', topic, data)
+        self.assertEqual(len(devices), 1)
+        self.assertTrue(1 in devices)
+        self.assertTrue(devices[1].Name, "")
+        self.assertTrue(devices[1].Unit, 1)
+        self.assertTrue(devices[1].Type, 244)
+        self.assertTrue(devices[1].SubType, 73)
+        self.assertTrue(devices[1].SwitchType, 11)
+        self.assertTrue(devices[1].DeviceID, "00158D00025EEA0D")
+        self.assertTrue(devices[1].Used, 1)
+
+        # No Update, different ID
+        topic = 'AqaraHub/00158D00025EEA0DXX/1/in/Basic/Report Attributes/0xFF01'
+        data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3055},"10":{"type":"uint16","value":0},"100":{"type":"bool","value":true},"11":{"type":"uint16","value":10},"3":{"type":"int8","value":30},"4":{"type":"uint16","value":424},"5":{"type":"uint16","value":9},"6":{"type":"uint40","value":0}}}'
+
+        adapter.onData(devices, DeviceIDMSMock, 'AqaraHub', topic, data)
+        dev = devices[1]
+        self.assertEqual(dev.nValue, 0)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.BatteryLevel, 255)
+        self.assertEqual(dev.SignalLevel, 100)
+
+        # Update
+        topic = 'AqaraHub/00158D00025EEA0D/1/in/Basic/Report Attributes/0xFF01'
+        adapter.onData(devices, DeviceIDMSMock, 'AqaraHub', topic, data)
+        dev = devices[1]
+        self.assertEqual(dev.nValue, 1)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.BatteryLevel, 100)
+        self.assertEqual(dev.SignalLevel, 100)
+
+    def testXiaomiBlockOn(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D00025EEA0D/1/in/Basic/Report Attributes/0xFF01'
+        data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3055},"10":{"type":"uint16","value":0},"100":{"type":"bool","value":true},"3":{"type":"int8","value":22},"4":{"type":"uint16","value":424},"5":{"type":"uint16","value":102},"6":{"type":"uint40","value":1}}}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.processData(t, data)
+        self.assertEqual(dev.nValue, 1)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.BatteryLevel, 100)
+        self.assertEqual(dev.SignalLevel, 100)
+        
+    def testXiaomiBlockOff(self):
+        (devices, dev, proxy) = self.getMock()
+        topic = 'AqaraHub/00158D00025EEA0D/1/in/Basic/Report Attributes/0xFF01'
+        data = '{"type":"xiaomi_ff01","value":{"1":{"type":"uint16","value":3055},"10":{"type":"uint16","value":0},"100":{"type":"bool","value":false},"3":{"type":"int8","value":22},"4":{"type":"uint16","value":424},"5":{"type":"uint16","value":102},"6":{"type":"uint40","value":1}}}'
+        t = adapter.Topic('AqaraHub', topic)
+        proxy.setDoorOpen("true")
+        proxy.update()
+        self.assertEqual(dev.nValue, 1)
+        proxy.processData(t, data)
+        self.assertEqual(dev.nValue, 0)
+        self.assertEqual(dev.sValue, "")
+        self.assertEqual(dev.BatteryLevel, 100)
+        self.assertEqual(dev.SignalLevel, 100)
+
                 
 
         
